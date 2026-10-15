@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register — SLARI Research Hub</title>
+  <link rel="stylesheet" href="../../static/css/main.css">
+  <link rel="stylesheet" href="../../static/css/layout.css">
+  <link rel="stylesheet" href="../../static/css/component.css">
+</head>
+<body>
+
+<div class="auth-wrapper">
+  <div style="width:100%;max-width:460px;">
+
+    <!-- Logo -->
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="font-family:Georgia,serif;font-size:42px;color:var(--green-800);">🌱</div>
+      <div style="font-family:Georgia,serif;font-size:26px;color:var(--green-800);font-weight:bold;margin-top:4px;">SLARI</div>
+      <div style="font-size:13px;color:var(--text-3);margin-top:3px;">Agricultural Research Hub — Sierra Leone</div>
+    </div>
+
+    <div class="auth-card">
+      <h2 class="auth-card__title">Create your account</h2>
+
+      <!-- Role selector -->
+      <div style="margin-bottom:18px;">
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-3);
+                      text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">
+          I am registering as a…
+        </label>
+        <div class="role-tabs" id="role-tabs">
+          <div class="role-tab selected" data-role="farmer" onclick="selectRole('farmer')">
+            <span class="role-tab__icon">👨‍🌾</span>Farmer
+          </div>
+          <div class="role-tab" data-role="researcher" onclick="selectRole('researcher')">
+            <span class="role-tab__icon">🔬</span>Researcher
+          </div>
+          <div class="role-tab" data-role="extension" onclick="selectRole('extension')">
+            <span class="role-tab__icon">🏢</span>Extension
+          </div>
+          <div class="role-tab" data-role="admin" onclick="selectRole('admin')">
+            <span class="role-tab__icon">🛡️</span>Admin
+          </div>
+        </div>
+      </div>
+
+      <!-- Registration form -->
+      <form id="register-form" onsubmit="handleRegister(event)" novalidate>
+
+        <!-- Personal Info -->
+        <div class="form-grid-2">
+          <div class="form-group" id="fg-firstname">
+            <label for="reg-firstname">First Name *</label>
+            <input type="text" id="reg-firstname" placeholder="e.g. Sorie" autocomplete="given-name">
+            <div class="form-group__error">Required.</div>
+          </div>
+          <div class="form-group" id="fg-lastname">
+            <label for="reg-lastname">Last Name *</label>
+            <input type="text" id="reg-lastname" placeholder="e.g. Kamara" autocomplete="family-name">
+            <div class="form-group__error">Required.</div>
+          </div>
+        </div>
+
+        <div class="form-group" id="fg-email">
+          <label for="reg-email">Email Address *</label>
+          <input type="email" id="reg-email" placeholder="you@example.com" autocomplete="email">
+          <div class="form-group__error">Please enter a valid email address.</div>
+        </div>
+
+        <div class="form-group" id="fg-phone">
+          <label for="reg-phone">Phone Number</label>
+          <input type="tel" id="reg-phone" placeholder="+232 XX XXX XXXX" autocomplete="tel">
+        </div>
+
+        <!-- Role-specific fields (shown/hidden by JS) -->
+        <div id="farmer-fields">
+          <div class="form-group" id="fg-district">
+            <label for="reg-district">District *</label>
+            <select id="reg-district">
+              <option value="">— Select your district —</option>
+              <option>Bo</option><option>Bombali</option><option>Bonthe</option>
+              <option>Falaba</option><option>Kailahun</option><option>Kambia</option>
+              <option>Karene</option><option>Kenema</option><option>Koinadugu</option>
+              <option>Kono</option><option>Moyamba</option><option>Port Loko</option>
+              <option>Pujehun</option><option>Tonkolili</option>
+              <option>Western Area Rural</option><option>Western Area Urban</option>
+            </select>
+            <div class="form-group__error">Please select your district.</div>
+          </div>
+          <div class="form-group">
+            <label>Primary Crops (select all that apply)</label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;" id="crop-checkboxes">
+              <!-- Filled by JS -->
+            </div>
+          </div>
+        </div>
+
+        <div id="researcher-fields" style="display:none;">
+          <div class="form-group" id="fg-institute">
+            <label for="reg-institute">Research Station / Institute *</label>
+            <select id="reg-institute">
+              <option value="">— Select station —</option>
+              <option>SLARI Njala</option>
+              <option>SLARI Rokupr</option>
+              <option>SLARI Teko</option>
+              <option>SLARI Kabala</option>
+              <option>SLARI Kenema</option>
+              <option>Other</option>
+            </select>
+            <div class="form-group__error">Please select your station.</div>
+          </div>
+          <div class="form-group">
+            <label for="reg-specialisation">Specialisation / Research Area</label>
+            <input type="text" id="reg-specialisation" placeholder="e.g. Crop Breeding, Soil Science">
+          </div>
+        </div>
+
+        <div id="extension-fields" style="display:none;">
+          <div class="form-group">
+            <label for="reg-coverage">Coverage Area / Province</label>
+            <select id="reg-coverage">
+              <option value="">— Select coverage area —</option>
+              <option>Northern Province</option>
+              <option>Southern Province</option>
+              <option>Eastern Province</option>
+              <option>Western Area</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="form-group" id="fg-password">
+          <label for="reg-password">Password *</label>
+          <div style="position:relative;">
+            <input type="password" id="reg-password" placeholder="At least 8 characters"
+                   autocomplete="new-password" style="padding-right:42px;">
+            <button type="button" onclick="togglePw('reg-password','pw-toggle1')"
+                    style="position:absolute;right:12px;top:50%;transform:translateY(-50%);
+                           background:none;border:none;font-size:16px;color:var(--text-3);cursor:pointer;"
+                    id="pw-toggle1">👁</button>
+          </div>
+          <div class="form-group__error">Password must be at least 8 characters.</div>
+        </div>
+
+        <div class="form-group" id="fg-confirm">
+          <label for="reg-confirm">Confirm Password *</label>
+          <div style="position:relative;">
+            <input type="password" id="reg-confirm" placeholder="Re-enter your password"
+                   autocomplete="new-password" style="padding-right:42px;">
+            <button type="button" onclick="togglePw('reg-confirm','pw-toggle2')"
+                    style="position:absolute;right:12px;top:50%;transform:translateY(-50%);
+                           background:none;border:none;font-size:16px;color:var(--text-3);cursor:pointer;"
+                    id="pw-toggle2">👁</button>
+          </div>
+          <div class="form-group__error">Passwords do not match.</div>
+        </div>
+
+        <!-- Terms -->
+        <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:20px;">
+          <input type="checkbox" id="reg-terms"
+                 style="width:auto;margin-top:3px;accent-color:var(--green-700);">
+          <label for="reg-terms" style="font-size:13px;font-weight:400;color:var(--text-2);">
+            I agree to the SLARI platform terms of use and consent to my data being
+            used for agricultural research purposes.
+          </label>
+        </div>
+        <div id="terms-error"
+             style="display:none;font-size:12px;color:#dc3545;margin-bottom:12px;margin-top:-12px;">
+          Please accept the terms to continue.
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" class="btn btn--primary btn--full btn--lg" id="reg-btn">
+          Create Account →
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        Already have an account? <a href="login.html">Sign in →</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast" style="display:none"></div>
+
+<!-- Scripts -->
+<script src="../../static/js/api.js"></script>
+<script src="../../static/js/app.js"></script>
+<script src="../../static/js/ui.js"></script>
+
+<script>
+  /* ── Redirect if already logged in ── */
+  if (Auth.isLoggedIn()) window.location.href = 'index.html';
+
+  let currentRole = 'farmer';
+
+  /* ── Build crop checkboxes ── */
+  const cropsList = ['Cassava','Rice','Maize','Sweet Potato','Groundnut','Sorghum','Cowpea','Yam'];
+  document.getElementById('crop-checkboxes').innerHTML = cropsList.map(c => `
+    <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;
+                  background:var(--green-50);padding:4px 10px;border-radius:12px;
+                  border:1px solid var(--green-100);">
+      <input type="checkbox" value="${c}" name="crops"
+             style="width:auto;accent-color:var(--green-700);">
+      ${c}
+    </label>
+  `).join('');
+
+  /* ── Role selector ── */
+  function selectRole(role) {
+    currentRole = role;
+    document.querySelectorAll('.role-tab').forEach(t =>
+      t.classList.toggle('selected', t.dataset.role === role)
+    );
+    document.getElementById('farmer-fields').style.display    = role === 'farmer'     ? '' : 'none';
+    document.getElementById('researcher-fields').style.display= role === 'researcher' ? '' : 'none';
+    document.getElementById('extension-fields').style.display = role === 'extension'  ? '' : 'none';
+  }
+
+  /* ── Show/hide password ── */
+  function togglePw(inputId, btnId) {
+    const input = document.getElementById(inputId);
+    const btn   = document.getElementById(btnId);
+    if (input.type === 'password') { input.type = 'text';     btn.textContent = '🙈'; }
+    else                           { input.type = 'password'; btn.textContent = '👁'; }
+  }
+
+  /* ── Form submit ── */
+  function handleRegister(e) {
+    e.preventDefault();
+
+    const firstName = document.getElementById('reg-firstname').value.trim();
+    const lastName  = document.getElementById('reg-lastname').value.trim();
+    const email     = document.getElementById('reg-email').value.trim();
+    const password  = document.getElementById('reg-password').value;
+    const confirm   = document.getElementById('reg-confirm').value;
+    const terms     = document.getElementById('reg-terms').checked;
+    let valid = true;
+
+    /* Validate required fields */
+    document.getElementById('fg-firstname').classList.toggle('form-group--error', !firstName);
+    document.getElementById('fg-lastname').classList.toggle('form-group--error', !lastName);
+    document.getElementById('fg-email').classList.toggle('form-group--error', !email || !email.includes('@'));
+    document.getElementById('fg-password').classList.toggle('form-group--error', password.length < 8);
+    document.getElementById('fg-confirm').classList.toggle('form-group--error', password !== confirm);
+    document.getElementById('terms-error').style.display = !terms ? 'block' : 'none';
+
+    if (!firstName || !lastName || !email || !email.includes('@') ||
+        password.length < 8 || password !== confirm || !terms) return;
+
+    /* Role-specific validation */
+    if (currentRole === 'farmer') {
+      const district = document.getElementById('reg-district').value;
+      document.getElementById('fg-district').classList.toggle('form-group--error', !district);
+      if (!district) return;
+    }
+    if (currentRole === 'researcher') {
+      const inst = document.getElementById('reg-institute').value;
+      document.getElementById('fg-institute').classList.toggle('form-group--error', !inst);
+      if (!inst) return;
+    }
+
+    /* Simulate registration */
+    const btn = document.getElementById('reg-btn');
+    btn.textContent = 'Creating account…';
+    btn.disabled = true;
+
+    setTimeout(() => {
+      const fullName = `${firstName} ${lastName}`;
+      Auth.login(fullName, currentRole);
+      showToast(`✅ Account created! Welcome, ${firstName}!`);
+      setTimeout(() => {
+        window.location.href = currentRole === 'farmer' ? 'index.html' : 'dashboard.html';
+      }, 700);
+    }, 900);
+  }
+</script>
+
+</body>
+</html>

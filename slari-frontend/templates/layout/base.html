@@ -1,0 +1,109 @@
+<!-- ============================================================
+     SLARI — RESEARCH HUB
+     templates/layout/base.html
+
+     BASE LAYOUT TEMPLATE
+     Every page in templates/pages/ copies this exact structure
+     and fills in page-specific content and scripts.
+
+     CSS load order (always in this order):
+       1. main.css      — variables, reset, base
+       2. layout.css    — sidebar, topbar, hero, page wrappers
+       3. component.css — all UI components
+
+     JS load order (always in this order):
+       1. api.js        — data layer (VARIETIES, FARMERS, etc.)
+       2. app.js        — state, auth, nav config
+       3. ui.js         — sidebar render, toast, variety cards
+       4. modal.js      — modal open/close + variety detail modal
+       5. [page].js     — page-specific logic
+
+     PATH NOTE: pages are in templates/pages/
+       → CSS path: ../../static/css/
+       → JS path:  ../../static/js/
+   ============================================================ -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><!-- PAGE TITLE --> — SLARI Research Hub</title>
+
+  <!-- 1. CSS -->
+  <link rel="stylesheet" href="../../static/css/main.css">
+  <link rel="stylesheet" href="../../static/css/layout.css">
+  <link rel="stylesheet" href="../../static/css/component.css">
+</head>
+<body>
+
+  <!-- ===== APP SHELL ===== -->
+  <div class="app">
+
+    <!-- Sidebar (structure here, content injected by ui.js) -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar__logo">
+        <div class="sidebar__brand">🌱 SLARI</div>
+        <div class="sidebar__tagline">Agricultural Research Platform</div>
+      </div>
+      <div class="sidebar__nav"  id="sidebar-nav"></div>
+      <div class="sidebar__user" id="sidebar-user"></div>
+    </nav>
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+    <!-- Main content area -->
+    <main class="main">
+
+      <!-- Sticky topbar -->
+      <div class="topbar">
+        <div class="topbar__left">
+          <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Toggle menu">☰</button>
+          <span class="topbar__title" id="page-title"><!-- PAGE TITLE --></span>
+        </div>
+        <div class="topbar__actions">
+          <!-- PAGE-SPECIFIC TOPBAR ACTIONS (optional) -->
+        </div>
+      </div>
+
+      <!-- ===== PAGE CONTENT (unique per page) ===== -->
+      <div id="page-content" class="page">
+        <!-- page-specific content rendered here -->
+      </div>
+
+      <!-- Footer -->
+      <footer class="footer">
+        <div><span style="color:rgba(255,255,255,.8);font-weight:600;">🌱 SLARI</span> — Sierra Leone Agricultural Research Institute</div>
+        <div style="display:flex;gap:20px;">
+          <a href="index.html" style="color:rgba(255,255,255,.45);">Home</a>
+          <a href="reseach-list.html" style="color:rgba(255,255,255,.45);">Varieties</a>
+          <a href="login.html" style="color:rgba(255,255,255,.45);">Login</a>
+        </div>
+        <div>&copy; <span id="footer-year"></span> SLARI. All rights reserved.</div>
+      </footer>
+
+    </main>
+  </div>
+
+  <!-- Modal overlay (content injected by modal.js) -->
+  <div class="modal-overlay" id="modal-overlay" style="display:none"
+       onclick="if(event.target===this)Modal.close()"></div>
+
+  <!-- Toast notification -->
+  <div class="toast" id="toast" style="display:none"></div>
+
+  <!-- ===== SHARED SCRIPTS (load in this order on every page) ===== -->
+  <script src="../../static/js/api.js"></script>
+  <script src="../../static/js/app.js"></script>
+  <script src="../../static/js/ui.js"></script>
+  <script src="../../static/js/modal.js"></script>
+
+  <!-- PAGE-SPECIFIC SCRIPT -->
+  <!-- <script src="../../static/js/[page].js"></script> -->
+
+  <!-- Page init -->
+  <script>
+    document.getElementById('footer-year').textContent = new Date().getFullYear();
+    // initPage({ title: 'Page Title' });
+  </script>
+
+</body>
+</html>

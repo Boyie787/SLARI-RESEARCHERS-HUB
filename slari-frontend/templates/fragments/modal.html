@@ -1,0 +1,15 @@
+<!-- ============================================================
+     SLARI — RESEARCH HUB
+     fragments/modal.html
+     Modal overlay container.
+     Content is injected by modal.js Modal.open(html).
+     ============================================================ -->
+
+<!-- Hidden by default; shown by Modal.open() in modal.js -->
+<div class="modal-overlay" id="modal-overlay" style="display:none"
+     onclick="if(event.target===this)Modal.close()">
+  <!-- Modal content injected here dynamically -->
+</div>
+
+<!-- Toast notification (also shared across pages) -->
+<div class="toast" id="toast" style="display:none"></div>

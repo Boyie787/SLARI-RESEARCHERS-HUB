@@ -1,0 +1,22 @@
+<!-- ============================================================
+     SLARI — RESEARCH HUB
+     fragments/footer.html
+     ============================================================ -->
+
+<footer class="footer">
+  <div>
+    <span class="footer__brand">🌱 SLARI</span>
+    &nbsp;— Sierra Leone Agricultural Research Institute
+  </div>
+  <div class="footer__links">
+    <a href="index.html">Home</a>
+    <a href="reseach-list.html">Varieties</a>
+    <a href="login.html">Login</a>
+  </div>
+  <div>&copy; <span id="footer-year"></span> SLARI. All rights reserved.</div>
+</footer>
+
+<script>
+  const fy = document.getElementById('footer-year');
+  if (fy) fy.textContent = new Date().getFullYear();
+</script>

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — SLARI Research Hub</title>
+  <link rel="stylesheet" href="../../static/css/main.css">
+  <link rel="stylesheet" href="../../static/css/layout.css">
+  <link rel="stylesheet" href="../../static/css/component.css">
+</head>
+<body>
+
+<div class="auth-wrapper">
+  <div style="width:100%;max-width:440px;">
+
+    <!-- Logo -->
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="font-family:Georgia,serif;font-size:42px;color:var(--green-800);">🌱</div>
+      <div style="font-family:Georgia,serif;font-size:26px;color:var(--green-800);font-weight:bold;margin-top:4px;">SLARI</div>
+      <div style="font-size:13px;color:var(--text-3);margin-top:3px;">Agricultural Research Hub — Sierra Leone</div>
+    </div>
+
+    <div class="auth-card">
+      <h2 class="auth-card__title">Sign in to your account</h2>
+
+      <!-- Role selector -->
+      <div style="margin-bottom:18px;">
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">
+          Select your role
+        </label>
+        <div class="role-tabs" id="role-tabs">
+          <div class="role-tab selected" data-role="farmer" onclick="selectRole('farmer')">
+            <span class="role-tab__icon">👨‍🌾</span>Farmer
+          </div>
+          <div class="role-tab" data-role="researcher" onclick="selectRole('researcher')">
+            <span class="role-tab__icon">🔬</span>Researcher
+          </div>
+          <div class="role-tab" data-role="extension" onclick="selectRole('extension')">
+            <span class="role-tab__icon">🏢</span>Extension
+          </div>
+          <div class="role-tab" data-role="admin" onclick="selectRole('admin')">
+            <span class="role-tab__icon">🛡️</span>Admin
+          </div>
+        </div>
+      </div>
+
+      <!-- Login form -->
+      <form id="login-form" onsubmit="handleLogin(event)" novalidate>
+
+        <div class="form-group" id="fg-name">
+          <label for="login-name">Full Name</label>
+          <input type="text" id="login-name" placeholder="Enter your full name" autocomplete="name">
+          <div class="form-group__error">Please enter your name.</div>
+        </div>
+
+        <div class="form-group" id="fg-email">
+          <label for="login-email">Email Address</label>
+          <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email">
+          <div class="form-group__error">Please enter a valid email.</div>
+        </div>
+
+        <div class="form-group" id="fg-password">
+          <label for="login-password">
+            Password
+            <span id="demo-hint"
+                  style="font-size:11px;font-weight:400;color:var(--text-3);margin-left:6px;">
+              (demo: any password works)
+            </span>
+          </label>
+          <div style="position:relative;">
+            <input type="password" id="login-password" placeholder="Enter password"
+                   autocomplete="current-password" style="padding-right:42px;">
+            <button type="button" onclick="togglePasswordVisibility()"
+                    style="position:absolute;right:12px;top:50%;transform:translateY(-50%);
+                           background:none;border:none;font-size:16px;color:var(--text-3);cursor:pointer;"
+                    id="pw-toggle" aria-label="Show/hide password">👁</button>
+          </div>
+          <div class="form-group__error">Please enter your password.</div>
+        </div>
+
+        <!-- Error alert -->
+        <div id="login-error"
+             style="display:none;background:#f8d7da;border:1px solid #f5c6cb;color:#721c24;
+                    padding:10px 14px;border-radius:var(--radius);font-size:13px;margin-bottom:14px;">
+        </div>
+
+        <button type="submit" class="btn btn--primary btn--full btn--lg" id="login-btn">
+          Sign In →
+        </button>
+      </form>
+
+      <div class="auth-divider">or</div>
+
+      <button class="btn btn--ghost btn--full" onclick="guestLogin()">
+        Continue as Guest (browse only)
+      </button>
+
+      <div class="auth-footer">
+        Don't have an account?
+        <a href="register.html">Create one →</a>
+      </div>
+    </div>
+
+    <!-- Demo credentials box -->
+    <div style="margin-top:20px;background:var(--amber-50);border:1px solid var(--amber-100);
+                border-radius:var(--radius);padding:14px 16px;">
+      <div style="font-size:12px;font-weight:700;color:var(--amber-700);margin-bottom:8px;">
+        🧪 DEMO CREDENTIALS
+      </div>
+      <div id="demo-creds" style="font-size:12px;color:var(--brown-700);line-height:1.8;">
+        <!-- Filled by JS based on selected role -->
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast" style="display:none"></div>
+
+<!-- Scripts -->
+<script src="../../static/js/api.js"></script>
+<script src="../../static/js/app.js"></script>
+<script src="../../static/js/ui.js"></script>
+
+<script>
+  /* ── If already logged in, redirect to home ── */
+  if (Auth.isLoggedIn()) window.location.href = 'index.html';
+
+  /* ── Demo credentials per role ── */
+  const DEMO = {
+    farmer:     { name: 'Sorie Kamara',       email: 'sorie@farmer.sl',      dest: 'index.html' },
+    researcher: { name: 'Dr. Amara Koroma',   email: 'amara@slari.gov.sl',   dest: 'dashboard.html' },
+    extension:  { name: 'Officer Joseph',     email: 'joseph@extension.sl',  dest: 'dashboard.html' },
+    admin:      { name: 'Admin User',          email: 'admin@slari.gov.sl',   dest: 'dashboard.html' },
+  };
+
+  let currentRole = 'farmer';
+
+  function selectRole(role) {
+    currentRole = role;
+    /* Update tab styles */
+    document.querySelectorAll('.role-tab').forEach(tab => {
+      tab.classList.toggle('selected', tab.dataset.role === role);
+    });
+    /* Pre-fill demo credentials */
+    const d = DEMO[role];
+    document.getElementById('login-name').value  = d.name;
+    document.getElementById('login-email').value = d.email;
+    /* Update demo hint */
+    document.getElementById('demo-creds').innerHTML = `
+      <strong>Role:</strong> ${role}<br>
+      <strong>Name:</strong> ${d.name}<br>
+      <strong>Email:</strong> ${d.email}<br>
+      <strong>Password:</strong> demo1234
+    `;
+  }
+
+  function togglePasswordVisibility() {
+    const pw  = document.getElementById('login-password');
+    const btn = document.getElementById('pw-toggle');
+    if (pw.type === 'password') { pw.type = 'text';     btn.textContent = '🙈'; }
+    else                        { pw.type = 'password'; btn.textContent = '👁'; }
+  }
+
+  function handleLogin(e) {
+    e.preventDefault();
+    const name     = document.getElementById('login-name').value.trim();
+    const email    = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    let valid = true;
+
+    /* Simple validation */
+    const fgName = document.getElementById('fg-name');
+    const fgEmail = document.getElementById('fg-email');
+    const fgPw   = document.getElementById('fg-password');
+
+    fgName.classList.toggle('form-group--error',  !name);
+    fgEmail.classList.toggle('form-group--error', !email || !email.includes('@'));
+    fgPw.classList.toggle('form-group--error',    !password);
+
+    if (!name || !email || !email.includes('@') || !password) return;
+
+    /* Simulate login (replace with real API call in production) */
+    const btn = document.getElementById('login-btn');
+    btn.textContent = 'Signing in…';
+    btn.disabled = true;
+
+    setTimeout(() => {
+      Auth.login(name, currentRole);
+      showToast(`✅ Welcome back, ${name}!`);
+      setTimeout(() => {
+        window.location.href = DEMO[currentRole].dest;
+      }, 600);
+    }, 700);
+  }
+
+  function guestLogin() {
+    Auth.login('Guest', 'guest');
+    window.location.href = 'reseach-list.html';
+  }
+
+  /* Init demo creds for default role */
+  selectRole('farmer');
+</script>
+
+</body>
+</html>

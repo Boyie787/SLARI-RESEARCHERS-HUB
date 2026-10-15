@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — SLARI Research Hub</title>
+  <link rel="stylesheet" href="../../static/css/main.css">
+  <link rel="stylesheet" href="../../static/css/layout.css">
+  <link rel="stylesheet" href="../../static/css/component.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ===== SIDEBAR ===== -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar__logo">
+      <div class="sidebar__brand">🌱 SLARI</div>
+      <div class="sidebar__tagline">Agricultural Research Platform</div>
+    </div>
+    <div class="sidebar__nav"  id="sidebar-nav"></div>
+    <div class="sidebar__user" id="sidebar-user"></div>
+  </nav>
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+  <!-- ===== MAIN ===== -->
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="topbar__left">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <span class="topbar__title" id="page-title">Dashboard</span>
+      </div>
+      <div class="topbar__actions" id="topbar-actions"></div>
+    </div>
+
+    <!-- Dashboard tabs (shown per role) -->
+    <div style="background:var(--white);border-bottom:2px solid var(--border-2);
+                padding:0 28px;" id="dash-tabs">
+      <!-- Filled by JS -->
+    </div>
+
+    <!-- Content -->
+    <div id="dash-content" class="page">
+      <!-- Filled by JS -->
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div><span style="color:rgba(255,255,255,.8);font-weight:600;">🌱 SLARI</span> — Sierra Leone Agricultural Research Institute</div>
+      <div style="display:flex;gap:20px;">
+        <a href="index.html"        style="color:rgba(255,255,255,.45);">Home</a>
+        <a href="reseach-list.html" style="color:rgba(255,255,255,.45);">Varieties</a>
+      </div>
+      <div>&copy; <span id="footer-year"></span> SLARI.</div>
+    </footer>
+
+  </main>
+</div>
+
+<!-- Modal & Toast -->
+<div class="modal-overlay" id="modal-overlay" style="display:none"
+     onclick="if(event.target===this)Modal.close()"></div>
+<div class="toast" id="toast" style="display:none"></div>
+
+<!-- Scripts -->
+<script src="../../static/js/api.js"></script>
+<script src="../../static/js/app.js"></script>
+<script src="../../static/js/ui.js"></script>
+<script src="../../static/js/modal.js"></script>
+
+<script>
+/* ============================================================
+   dashboard.js — inline dashboard page logic
+   Renders different content based on the logged-in user's role:
+     researcher  → My Varieties | Analytics | Pending | Upload
+     admin       → Pending Approval | All Varieties | Users | Stats
+     extension   → Recommend | Sent | My Farmers
+     farmer      → Bookmarks | Crop Insights
+   ============================================================ */
+
+document.getElementById('footer-year').textContent = new Date().getFullYear();
+
+/* Require login to access dashboard */
+Auth.requireAuth();
+
+const user    = Auth.getUser();
+const role    = user.role;
+let activeTab = getParam('view') || 'default';
+
+/* ============================
+   BOOT — pick the right dashboard
+   ============================ */
+function renderDashboard() {
+  if (role === 'researcher') initResearcher();
+  else if (role === 'admin') initAdmin();
+  else if (role === 'extension') initExtension();
+  else initFarmer();
+}
+
+/* ============================
+   RESEARCHER DASHBOARD
+   ============================ */
+function initResearcher() {
+  document.getElementById('page-title').textContent = 'Researcher Dashboard';
+  document.getElementById('topbar-actions').innerHTML =
+    `<a href="?view=upload" class="btn btn--primary btn--sm">➕ Upload New Variety</a>`;
+
+  const tabs = ['my-varieties', 'analytics', 'pending', 'upload'];
+  const labels = ['📋 My Varieties', '📊 Analytics', '⏳ Pending Review', '➕ Upload Variety'];
+  if (!tabs.includes(activeTab)) activeTab = 'my-varieties';
+
+  renderTabs(labels, tabs, activeTab);
+
+  if (activeTab === 'my-varieties') renderMyVarieties();
+  else if (activeTab === 'analytics') renderAnalytics();
+  else if (activeTab === 'pending') renderPendingResearcher();
+  else if (activeTab === 'upload') renderUploadForm();
+}
+
+function renderTabs(labels, keys, current) {
+  document.getElementById('dash-tabs').innerHTML = `
+    <div style="display:flex;gap:2px;">
+      ${labels.map((label, i) => `
+        <button class="tab-btn ${keys[i] === current ? 'active' : ''}"
+                onclick="changeTab('${keys[i]}')">${label}</button>
+      `).join('')}
+    </div>
+  `;
+}
+
+function changeTab(tab) {
+  activeTab = tab;
+  history.replaceState(null, '', `?view=${tab}`);
+  renderDashboard();
+}
+
+function renderMyVarieties() {
+  const all = getAllVarieties();
+  const stats = getPlatformStats();
+
+  document.getElementById('dash-content').innerHTML = `
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-card__label">Total Varieties</div>
+        <div class="stat-card__value">${all.length}</div>
+        <div class="stat-card__sub">${stats.published} published</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">Total Views</div>
+        <div class="stat-card__value">${stats.totalViews.toLocaleString()}</div>
+        <div class="stat-card__sub">Across all varieties</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">Farmer Bookmarks</div>
+        <div class="stat-card__value">${stats.totalBookmarks}</div>
+        <div class="stat-card__sub">Saved by farmers</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">Pending Review</div>
+        <div class="stat-card__value" style="color:#856404;">${stats.pending}</div>
+        <div class="stat-card__sub">Awaiting admin approval</div>
+      </div>
+    </div>
+    <div class="card-grid">
+      ${all.map(v => varietyCardHTML(v)).join('')}
+    </div>
+  `;
+}
+
+function renderAnalytics() {
+  const all = getAllVarieties();
+  document.getElementById('dash-content').innerHTML = `
+    <div class="card card--flush">
+      <div style="padding:18px 20px 0;font-family:Georgia,serif;font-size:17px;
+                  color:var(--green-800);padding-bottom:12px;border-bottom:1px solid var(--border-2);">
+        Variety Performance
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Variety</th><th>Crop</th><th>Status</th>
+            <th>Views</th><th>Bookmarks</th><th>Rating</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${all.map(v => `
+            <tr onclick="openVarietyModal(${v.id})" style="cursor:pointer;">
+              <td>
+                <strong>${v.name}</strong><br>
+                <span style="font-size:11px;color:var(--text-3);">${v.institute || 'SLARI'}</span>
+              </td>
+              <td>${v.crop}</td>
+              <td>
+                <span class="badge badge--${v.status==='published'?'green':v.status==='pending'?'yellow':'gray'}">
+                  ${v.status}
+                </span>
+              </td>
+              <td>${(v.views || 0).toLocaleString()}</td>
+              <td>${v.bookmarks || 0}</td>
+              <td>⭐ ${v.rating} <span style="color:var(--text-3);font-size:11px;">(${v.ratingCount})</span></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderPendingResearcher() {
+  const pending = getAllVarieties().filter(v => v.status === 'pending');
+  document.getElementById('dash-content').innerHTML = pending.length === 0 ? `
+    <div class="empty-state">
+      <div class="empty-state__icon">✅</div>
+      <h3 class="empty-state__title">No pending submissions</h3>
+      <p class="empty-state__desc">All your varieties have been reviewed by admin.</p>
+    </div>
+  ` : pending.map(v => `
+    <div class="submission-item">
+      <div class="submission-item__icon">${v.emoji}</div>
+      <div class="submission-item__body">
+        <div class="submission-item__title">${v.name} — ${v.crop}</div>
+        <div class="submission-item__meta">Submitted ${v.year} · Awaiting admin review</div>
+        <div class="submission-item__actions">
+          <span class="badge badge--yellow">Pending Review</span>
+          <button class="btn btn--ghost btn--sm" onclick="openVarietyModal(${v.id})">👁 Preview</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ============================
+   UPLOAD FORM
+   ============================ */
+function renderUploadForm() {
+  document.getElementById('topbar-actions').innerHTML =
+    `<a href="?view=my-varieties" class="btn btn--ghost btn--sm">← Back to Dashboard</a>`;
+
+  document.getElementById('dash-content').innerHTML = `
+    <div class="page-header">
+      <h2 class="page-header__title">Upload New Crop Variety</h2>
+      <p class="page-header__sub">Submit your research findings for admin review before publication.</p>
+    </div>
+
+    <form id="upload-form" onsubmit="handleUpload(event)" novalidate>
+
+      <!-- Basic info -->
+      <div class="form-section">
+        <h3 class="form-section__title">📋 Basic Information</h3>
+        <div class="form-grid-2">
+          <div class="form-group" id="fg-vname">
+            <label for="v-name">Variety Name / Code *</label>
+            <input type="text" id="v-name" placeholder="e.g. SLARI-CASS-010">
+            <div class="form-group__error">Required.</div>
+          </div>
+          <div class="form-group" id="fg-vcrop">
+            <label for="v-crop">Crop Type *</label>
+            <select id="v-crop">
+              <option value="">— Select crop —</option>
+              ${['Cassava','Rice','Maize','Sweet Potato','Groundnut','Sorghum','Cowpea','Yam','Other']
+                .map(c => `<option>${c}</option>`).join('')}
+            </select>
+            <div class="form-group__error">Required.</div>
+          </div>
+        </div>
+        <div class="form-group" id="fg-vdesc">
+          <label for="v-desc">Description *</label>
+          <textarea id="v-desc" rows="4"
+            placeholder="Describe the variety's key characteristics, development background, and advantages…"></textarea>
+          <div class="form-group__error">Required.</div>
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="v-station">Research Station</label>
+            <select id="v-station">
+              ${['SLARI Njala','SLARI Rokupr','SLARI Teko','SLARI Kabala','SLARI Kenema']
+                .map(s => `<option>${s}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="v-year">Publication Year</label>
+            <input type="number" id="v-year" value="${new Date().getFullYear()}" min="2000" max="2035">
+          </div>
+        </div>
+      </div>
+
+      <!-- Agronomic data -->
+      <div class="form-section">
+        <h3 class="form-section__title">📊 Agronomic Data</h3>
+        <div class="form-grid-2">
+          <div class="form-group" id="fg-vyield">
+            <label for="v-yield">Expected Yield (t/ha) *</label>
+            <input type="text" id="v-yield" placeholder="e.g. 18 or 15–22">
+            <div class="form-group__error">Required.</div>
+          </div>
+          <div class="form-group" id="fg-vduration">
+            <label for="v-duration">Growth Duration *</label>
+            <input type="text" id="v-duration" placeholder="e.g. 12 months or 105 days">
+            <div class="form-group__error">Required.</div>
+          </div>
+          <div class="form-group">
+            <label for="v-resistance">Disease / Pest Resistance</label>
+            <input type="text" id="v-resistance" placeholder="e.g. CMD, Mosaic virus">
+          </div>
+          <div class="form-group">
+            <label for="v-rainfall">Rainfall Requirement</label>
+            <input type="text" id="v-rainfall" placeholder="e.g. 1200–2000mm">
+          </div>
+          <div class="form-group">
+            <label for="v-soil">Suitable Soil Type</label>
+            <input type="text" id="v-soil" placeholder="e.g. Loamy, Sandy loam">
+          </div>
+          <div class="form-group">
+            <label for="v-altitude">Altitude Range</label>
+            <input type="text" id="v-altitude" placeholder="e.g. 0–800m">
+          </div>
+        </div>
+      </div>
+
+      <!-- Region & Insights -->
+      <div class="form-section">
+        <h3 class="form-section__title">🗺️ Region & Farmer Insights</h3>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="v-region">Primary Region</label>
+            <select id="v-region">
+              ${['All Zones','Northern','Southern','Eastern','Western Area']
+                .map(r => `<option>${r}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="v-season">Cropping Season</label>
+            <select id="v-season">
+              ${['Wet','Dry & Wet','Bimodal'].map(s => `<option>${s}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="v-insights">Farmer-Friendly Insights <span style="font-weight:400;color:var(--text-3);">(one per line)</span></label>
+          <textarea id="v-insights" rows="4"
+            placeholder="Best for high rainfall areas&#10;Matures in 12 months&#10;Resistant to CMD&#10;Good for processing into gari"></textarea>
+          <div class="form-group__hint">These appear as simple tips to help farmers quickly understand the variety.</div>
+        </div>
+      </div>
+
+      <!-- Documentation -->
+      <div class="form-section">
+        <h3 class="form-section__title">📁 Documentation & Images</h3>
+        <div class="upload-zone" onclick="showToast('File upload will be enabled with backend integration.','info')">
+          <div class="upload-zone__icon">📄</div>
+          <p>Click to upload research documents, trial data sheets, or images</p>
+          <p style="font-size:11px;margin-top:6px;color:var(--text-3);">Accepted: PDF, DOCX, JPG, PNG — Max 10MB</p>
+        </div>
+      </div>
+
+      <div class="form-footer">
+        <button type="button" class="btn btn--ghost" onclick="changeTab('my-varieties')">Cancel</button>
+        <button type="button" class="btn btn--secondary" onclick="saveDraft()">💾 Save as Draft</button>
+        <button type="submit" class="btn btn--primary">📤 Submit for Review</button>
+      </div>
+    </form>
+  `;
+}
+
+function handleUpload(e) {
+  e.preventDefault();
+  const name     = document.getElementById('v-name').value.trim();
+  const crop     = document.getElementById('v-crop').value;
+  const desc     = document.getElementById('v-desc').value.trim();
+  const yield_   = document.getElementById('v-yield').value.trim();
+  const duration = document.getElementById('v-duration').value.trim();
+
+  document.getElementById('fg-vname').classList.toggle('form-group--error', !name);
+  document.getElementById('fg-vcrop').classList.toggle('form-group--error', !crop);
+  document.getElementById('fg-vdesc').classList.toggle('form-group--error', !desc);
+  document.getElementById('fg-vyield').classList.toggle('form-group--error', !yield_);
+  document.getElementById('fg-vduration').classList.toggle('form-group--error', !duration);
+
+  if (!name || !crop || !desc || !yield_ || !duration) return;
+
+  const emojiMap = {
+    Cassava:'🌿', Rice:'🌾', Maize:'🌽', 'Sweet Potato':'🍠',
+    Groundnut:'🥜', Sorghum:'🌾', Cowpea:'🫘', Yam:'🍫', Other:'🌱',
+  };
+
+  submitVariety({
+    name, crop, description: desc,
+    emoji:     emojiMap[crop] || '🌱',
+    yield:     yield_,
+    yieldUnit: 't/ha',
+    duration,
+    resistance: document.getElementById('v-resistance').value || 'TBD',
+    region:     document.getElementById('v-region').value,
+    season:     document.getElementById('v-season').value,
+    soilType:   document.getElementById('v-soil').value || 'TBD',
+    rainfall:   document.getElementById('v-rainfall').value || 'TBD',
+    altitude:   document.getElementById('v-altitude').value || 'TBD',
+    researcher: user.name,
+    institute:  document.getElementById('v-station').value,
+    year:       parseInt(document.getElementById('v-year').value) || new Date().getFullYear(),
+    insights:   document.getElementById('v-insights').value.split('\n').map(s => s.trim()).filter(Boolean),
+    tags:       [crop, 'New Variety'],
+  });
+
+  showToast('✅ Variety submitted for admin review!', 'info');
+  activeTab = 'pending';
+  history.replaceState(null, '', '?view=pending');
+  renderDashboard();
+}
+
+function saveDraft() {
+  const name = document.getElementById('v-name')?.value || 'Unnamed';
+  showToast(`💾 Draft "${name}" saved locally.`, 'info');
+}
+
+/* ============================
+   ADMIN DASHBOARD
+   ============================ */
+function initAdmin() {
+  document.getElementById('page-title').textContent = 'Admin Panel';
+
+  const tabs = ['pending','all-varieties','users','stats'];
+  const labels = ['⏳ Pending Approval','📋 All Varieties','👥 Users','📊 Stats'];
+  if (!tabs.includes(activeTab)) activeTab = 'pending';
+
+  renderTabs(labels, tabs, activeTab);
+
+  if (activeTab === 'pending') renderAdminPending();
+  else if (activeTab === 'all-varieties') renderAdminAllVarieties();
+  else if (activeTab === 'users') renderAdminUsers();
+  else if (activeTab === 'stats') renderAdminStats();
+}
+
+function renderAdminPending() {
+  const pending = getAllVarieties().filter(v => v.status === 'pending');
+  document.getElementById('topbar-actions').innerHTML = '';
+  document.getElementById('dash-content').innerHTML = pending.length === 0 ? `
+    <div class="empty-state">
+      <div class="empty-state__icon">✅</div>
+      <h3 class="empty-state__title">All caught up!</h3>
+      <p class="empty-state__desc">No varieties are awaiting review right now.</p>
+    </div>
+  ` : pending.map(v => `
+    <div class="submission-item">
+      <div class="submission-item__icon">${v.emoji}</div>
+      <div class="submission-item__body">
+        <div class="submission-item__title">${v.name} — ${v.crop}</div>
+        <div class="submission-item__meta">
+          By ${v.researcher} · ${v.institute || 'SLARI'} · ${v.year}
+        </div>
+        <p class="submission-item__desc">
+          ${(v.description || '').slice(0, 130)}…
+        </p>
+        <div class="submission-item__actions">
+          <button class="btn btn--primary btn--sm" onclick="approveVariety(${v.id})">✅ Approve & Publish</button>
+          <button class="btn btn--ghost btn--sm"   onclick="openVarietyModal(${v.id})">👁 Preview</button>
+          <button class="btn btn--danger btn--sm"  onclick="rejectVariety(${v.id})">✕ Reject</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function approveVariety(id) {
+  updateVarietyStatus(id, 'published');
+  showToast('✅ Variety published successfully!', 'info');
+  renderDashboard();
+}
+function rejectVariety(id) {
+  updateVarietyStatus(id, 'draft');
+  showToast('Submission returned to researcher as draft.', 'info');
+  renderDashboard();
+}
+
+function renderAdminAllVarieties() {
+  const all = getAllVarieties();
+  document.getElementById('dash-content').innerHTML = `
+    <div class="card card--flush">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Variety</th><th>Crop</th><th>Researcher</th>
+            <th>Status</th><th>Year</th><th>Views</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${all.map(v => `
+            <tr>
+              <td><strong>${v.name}</strong></td>
+              <td>${v.crop}</td>
+              <td style="font-size:12px;">${v.researcher}</td>
+              <td>
+                <span class="badge badge--${v.status==='published'?'green':v.status==='pending'?'yellow':'gray'}">
+                  ${v.status}
+                </span>
+              </td>
+              <td>${v.year}</td>
+              <td>${(v.views || 0).toLocaleString()}</td>
+              <td>
+                <button class="btn btn--ghost btn--sm" onclick="openVarietyModal(${v.id})">View</button>
+                ${v.status === 'pending' ? `
+                  <button class="btn btn--primary btn--sm" onclick="approveVariety(${v.id})">Approve</button>
+                ` : ''}
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderAdminUsers() {
+  const users = [
+    { name:'Dr. Amara Koroma',   role:'researcher', location:'SLARI Njala',    status:'active' },
+    { name:'Dr. Fatmata Bangura',role:'researcher', location:'SLARI Rokupr',   status:'active' },
+    { name:'Dr. Ibrahim Sesay',  role:'researcher', location:'SLARI Teko',     status:'active' },
+    { name:'Dr. Mariama Conteh', role:'researcher', location:'SLARI Kabala',   status:'active' },
+    { name:'Sorie Kamara',       role:'farmer',     location:'Tonkolili',      status:'active' },
+    { name:'Aminata Koroma',     role:'farmer',     location:'Kenema',         status:'active' },
+    { name:'Mohamed Turay',      role:'farmer',     location:'Bombali',        status:'active' },
+    { name:'Officer Joseph',     role:'extension',  location:'Northern Prov.', status:'active' },
+    { name:'Officer Hawa',       role:'extension',  location:'Southern Prov.', status:'active' },
+  ];
+  document.getElementById('dash-content').innerHTML = `
+    <div class="card card--flush">
+      <table class="data-table">
+        <thead>
+          <tr><th>Name</th><th>Role</th><th>Location / Station</th><th>Status</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          ${users.map(u => `
+            <tr>
+              <td><strong>${u.name}</strong></td>
+              <td>
+                <span class="badge badge--${
+                  u.role==='researcher'?'blue':u.role==='admin'?'red':u.role==='extension'?'green':'gray'
+                }">${u.role}</span>
+              </td>
+              <td style="font-size:12px;">${u.location}</td>
+              <td><span class="badge badge--green">${u.status}</span></td>
+              <td>
+                <button class="btn btn--ghost btn--sm"
+                        onclick="showToast('User profile editor coming soon.','info')">
+                  Manage
+                </button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderAdminStats() {
+  const stats = getPlatformStats();
+  const items = [
+    { icon:'🔬', label:'Researchers',         value: stats.researchers },
+    { icon:'👨‍🌾',label:'Farmers Registered', value: stats.farmersRegistered },
+    { icon:'🏢', label:'Extension Officers',  value: stats.extensionOfficers },
+    { icon:'🌱', label:'Published Varieties', value: stats.published },
+    { icon:'👁', label:'Total Views',         value: stats.totalViews.toLocaleString() },
+    { icon:'🔖', label:'Total Bookmarks',     value: stats.totalBookmarks },
+  ];
+  document.getElementById('dash-content').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;">
+      ${items.map(s => `
+        <div style="text-align:center;padding:24px 16px;background:var(--white);
+                    border-radius:var(--radius-lg);border:1px solid var(--border-2);
+                    box-shadow:var(--shadow);">
+          <div style="font-size:36px;margin-bottom:10px;">${s.icon}</div>
+          <div style="font-size:30px;font-weight:700;color:var(--green-700);
+                      font-family:Georgia,serif;">${s.value}</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:5px;">${s.label}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+/* ============================
+   EXTENSION DASHBOARD
+   ============================ */
+function initExtension() {
+  document.getElementById('page-title').textContent = 'Extension Dashboard';
+
+  const tabs = ['recommend','sent','my-farmers'];
+  const labels = ['📤 Recommend','✅ Sent','👨‍🌾 My Farmers'];
+  if (!tabs.includes(activeTab)) activeTab = 'recommend';
+
+  renderTabs(labels, tabs, activeTab);
+
+  if (activeTab === 'recommend') renderRecommendForm();
+  else if (activeTab === 'sent') renderSentRecs();
+  else if (activeTab === 'my-farmers') renderMyFarmers();
+}
+
+function renderRecommendForm() {
+  const published = getPublishedVarieties();
+  const farmers   = getAllFarmers();
+  document.getElementById('dash-content').innerHTML = `
+    <div class="card" style="max-width:680px;margin-bottom:24px;">
+      <div class="card__title">Send a Variety Recommendation</div>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label for="rec-farmer">Select Farmer</label>
+          <select id="rec-farmer">
+            <option value="">— Choose farmer —</option>
+            ${farmers.map(f =>
+              `<option value="${f.id}">${f.name} (${f.location})</option>`
+            ).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="rec-variety">Select Variety</label>
+          <select id="rec-variety">
+            <option value="">— Choose variety —</option>
+            ${published.map(v =>
+              `<option value="${v.id}">${v.name} – ${v.crop}</option>`
+            ).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="rec-note">Personalised Note</label>
+        <textarea id="rec-note" rows="3"
+          placeholder="Explain why this variety suits this farmer's land, climate, and goals…"></textarea>
+      </div>
+      <button class="btn btn--primary" onclick="sendRecommendation()">
+        📤 Send Recommendation
+      </button>
+    </div>
+  `;
+}
+
+function sendRecommendation() {
+  const farmerId  = document.getElementById('rec-farmer').value;
+  const varietyId = document.getElementById('rec-variety').value;
+  const note      = document.getElementById('rec-note').value.trim();
+
+  if (!farmerId || !varietyId) {
+    showToast('Please select both a farmer and a variety.', 'error');
+    return;
+  }
+
+  const farmer  = getAllFarmers().find(f => f.id === parseInt(farmerId));
+  const variety = getPublishedVarieties().find(v => v.id === parseInt(varietyId));
+
+  Recommendations.add({
+    farmerName:  farmer.name,
+    farmerLoc:   farmer.location,
+    varietyName: variety.name,
+    varietyId:   variety.id,
+    note,
+  });
+
+  showToast(`📤 Recommendation sent to ${farmer.name}!`, 'info');
+  activeTab = 'sent';
+  history.replaceState(null, '', '?view=sent');
+  renderDashboard();
+}
+
+function renderSentRecs() {
+  const recs = Recommendations.getAll();
+  document.getElementById('dash-content').innerHTML = recs.length === 0 ? `
+    <div class="empty-state">
+      <div class="empty-state__icon">📤</div>
+      <h3 class="empty-state__title">No recommendations sent yet</h3>
+      <p class="empty-state__desc">Use the Recommend tab to send variety suggestions to farmers.</p>
+    </div>
+  ` : recs.map(r => `
+    <div class="rec-card">
+      <div>
+        <div class="rec-card__farmer">
+          👨‍🌾 ${r.farmerName}
+          <span class="badge badge--green" style="margin-left:6px;">Sent</span>
+        </div>
+        <div class="rec-card__meta">
+          📍 ${r.farmerLoc} &nbsp;·&nbsp;
+          Variety: <strong>${r.varietyName}</strong>
+        </div>
+        ${r.note ? `<div class="rec-card__note">"${r.note}"</div>` : ''}
+      </div>
+      <div class="rec-card__date">${r.date}</div>
+    </div>
+  `).join('');
+}
+
+function renderMyFarmers() {
+  const farmers = getAllFarmers();
+  document.getElementById('dash-content').innerHTML = `
+    <div class="card card--flush">
+      <table class="data-table">
+        <thead>
+          <tr><th>Farmer</th><th>Location</th><th>Primary Crops</th><th>Registered</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          ${farmers.map(f => `
+            <tr>
+              <td><strong>${f.name}</strong></td>
+              <td>${f.location}</td>
+              <td>${f.crops.join(', ')}</td>
+              <td style="font-size:12px;">${f.registered}</td>
+              <td>
+                <button class="btn btn--ghost btn--sm"
+                        onclick="showToast('Farmer profile page coming soon.','info')">
+                  View Profile
+                </button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* ============================
+   FARMER DASHBOARD
+   ============================ */
+function initFarmer() {
+  document.getElementById('page-title').textContent = 'My Dashboard';
+
+  const tabs = ['bookmarks', 'insights'];
+  const labels = ['🔖 My Bookmarks', '📊 Crop Insights'];
+  if (!tabs.includes(activeTab)) activeTab = 'bookmarks';
+
+  renderTabs(labels, tabs, activeTab);
+
+  if (activeTab === 'bookmarks') renderFarmerBookmarks();
+  else if (activeTab === 'insights') renderFarmerInsights();
+}
+
+function renderFarmerBookmarks() {
+  const saved = getAllVarieties().filter(v => Bookmarks.has(v.id));
+  document.getElementById('dash-content').innerHTML = saved.length === 0 ? `
+    <div class="empty-state">
+      <div class="empty-state__icon">🔖</div>
+      <h3 class="empty-state__title">No saved varieties yet</h3>
+      <p class="empty-state__desc">Browse varieties and tap 🔲 to save them here.</p>
+      <div style="margin-top:18px;">
+        <a href="reseach-list.html" class="btn btn--primary">Browse Varieties</a>
+      </div>
+    </div>
+  ` : `
+    <p class="results-count">${saved.length} saved variet${saved.length === 1 ? 'y' : 'ies'}</p>
+    <div class="card-grid">${saved.map(v => varietyCardHTML(v)).join('')}</div>
+  `;
+}
+
+function renderFarmerInsights() {
+  const published = getPublishedVarieties();
+  const byCrop = {};
+  published.forEach(v => { byCrop[v.crop] = (byCrop[v.crop] || 0) + 1; });
+  document.getElementById('dash-content').innerHTML = `
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-card__label">Published Varieties</div>
+        <div class="stat-card__value">${published.length}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">Crop Types</div>
+        <div class="stat-card__value">${Object.keys(byCrop).length}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">My Bookmarks</div>
+        <div class="stat-card__value">${Bookmarks.getAll().length}</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card__title">Varieties by Crop</div>
+      ${Object.entries(byCrop).sort((a,b)=>b[1]-a[1]).map(([crop, count]) => `
+        <div style="margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;">
+            <strong>${crop}</strong>
+            <span style="color:var(--text-3);">${count}</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-bar__fill"
+                 style="width:${Math.round(count/published.length*100)}%"></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+/* ============================
+   BOOT
+   ============================ */
+renderDashboard();
+</script>
+
+</body>
+</html>
