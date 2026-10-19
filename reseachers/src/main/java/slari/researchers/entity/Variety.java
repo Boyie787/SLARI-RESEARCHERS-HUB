@@ -130,22 +130,19 @@ public class Variety {
     @Builder.Default
     private List<String> tags = new ArrayList<>();
 
-    // ADD THIS
-@Transient
-private Double averageRating;
+    @Formula("""
+        (SELECT COALESCE(ROUND(AVG(r.score)::numeric, 1), 0)
+         FROM ratings r
+         WHERE r.variety_id = id)
+    """)
+    private Double averageRating;
 
-@Transient
-private Long ratingCount;
-
-// Manual setters — required because @Transient fields are
-// excluded from Lombok's generated setters
-public void setAverageRating(Double averageRating) {
-    this.averageRating = averageRating;
-}
-
-public void setRatingCount(Long ratingCount) {
-    this.ratingCount = ratingCount;
-}
+    @Formula("""
+        (SELECT COUNT(r.id)
+         FROM ratings r
+         WHERE r.variety_id = id)
+    """)
+    private Long ratingCount;
 
     @OneToMany(
         mappedBy = "variety",

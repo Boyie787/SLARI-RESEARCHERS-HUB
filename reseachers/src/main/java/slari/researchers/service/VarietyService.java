@@ -47,32 +47,27 @@ public class VarietyService {
      * Browse varieties with optional filters (original method - keeps compatibility).
      */
     public List<VarietyResponse> browse(
-        VarietyStatus status,
-        String crop,
-        String region,
-        String season,
-        String keyword) {
+            VarietyStatus status,
+            String crop,
+            String region,
+            String season,
+            String keyword) {
 
-    String statusStr = status != null ? status.name() : null;
+        String statusStr = status != null ? status.name() : null;
 
-    List<Variety> varieties = varietyRepository.findWithFilters(
-            statusStr, crop, region, season,
-            (keyword != null && keyword.isBlank()) ? null : keyword
-    );
+        List<Variety> varieties = varietyRepository.findWithFilters(
+                statusStr,
+                crop,
+                region,
+                season,
+                (keyword != null && keyword.isBlank()) ? null : keyword
+        );
 
-    return varieties.stream()
-            .map(v -> {
-                Double avgRating = ratingRepository
-                        .getAverageRatingByVarietyId(v.getId());
-                Long ratingCnt = ratingRepository
-                        .countByVarietyId(v.getId());
-                v.setAverageRating(avgRating);
-                v.setRatingCount(ratingCnt);
-                return VarietyResponse.fromEntity(v,
-                        bookmarkRepository.countByVarietyId(v.getId()));
-            })
-            .collect(Collectors.toList());
-}
+        return varieties.stream()
+                .map(v -> VarietyResponse.fromEntity(v,
+                        bookmarkRepository.countByVarietyId(v.getId())))
+                .collect(Collectors.toList());
+    }
 
     /**
      * Browse varieties with pagination and user context.

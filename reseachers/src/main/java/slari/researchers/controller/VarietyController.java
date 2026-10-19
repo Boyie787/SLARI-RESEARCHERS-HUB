@@ -42,10 +42,13 @@ public class VarietyController {
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDirection,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         String email = userDetails != null ? userDetails.getUsername() : null;
-        Pageable pageable = PageRequest.of(page, size);
+        Sort.Direction direction = Sort.Direction.fromString(sortDirection.toUpperCase());
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
 
         Page<VarietyResponse> varieties = varietyService.browse(
                 status != null ? status : VarietyStatus.PUBLISHED,

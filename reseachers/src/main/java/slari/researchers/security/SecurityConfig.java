@@ -47,10 +47,10 @@ public class SecurityConfig {
                                                 "style-src 'self' https://cdn.jsdelivr.net; " +
                                                 "img-src 'self' data: https://res.cloudinary.com; " +
                                                 "font-src 'self' https://cdn.jsdelivr.net; " +
-                                                "connect-src 'self' http://localhost:8080 http://127.0.0.1:8080")
+                                                "connect-src 'self'")
                                 )
                                 .frameOptions(HeadersConfigurer.FrameOptionsConfig::deny)
-                        
+                        // Removed deprecated .xssProtection()
                 )
 
                 .authorizeHttpRequests(auth -> auth
@@ -71,7 +71,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/register",
                                 "/api/auth/login",
-                                "/api/auth/refresh",           
+                                "/api/auth/refresh",           // ✅ Added
                                 "/api/auth/forgot-password",
                                 "/api/auth/reset-password",
                                 "/api/auth/validate"
@@ -83,7 +83,7 @@ public class SecurityConfig {
                         // Variety CRUD - RESEARCHER and ADMIN
                         .requestMatchers(HttpMethod.POST, "/api/varieties")
                         .hasAnyRole("RESEARCHER", "ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/varieties/bulk")  
+                        .requestMatchers(HttpMethod.POST, "/api/varieties/bulk")  // ✅ Added bulk upload
                         .hasAnyRole("RESEARCHER", "ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/varieties/**")
                         .hasAnyRole("RESEARCHER", "ADMIN")
@@ -103,7 +103,7 @@ public class SecurityConfig {
                         .hasAnyRole("RESEARCHER", "ADMIN")
 
                         // Admin only
-                        .requestMatchers("/api/varieties/pending").hasRole("ADMIN")  
+                        .requestMatchers("/api/varieties/pending").hasRole("ADMIN")  // ✅ Added pending endpoint
                         .requestMatchers("/api/varieties/*/approve").hasRole("ADMIN")
                         .requestMatchers("/api/varieties/*/reject").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/varieties/**").hasRole("ADMIN")
@@ -119,15 +119,15 @@ public class SecurityConfig {
                         // User management
                         .requestMatchers("/api/users/farmers").authenticated()
                         .requestMatchers("/api/users/researchers").authenticated()
-                        .requestMatchers("/api/users/extension-officers").authenticated()  
+                        .requestMatchers("/api/users/extension-officers").authenticated()  // ✅ Fixed
                         .requestMatchers("/api/users/by-role").authenticated()
                         .requestMatchers("/api/users/me/**").authenticated()
 
                         // Admin user management
-                        .requestMatchers("/api/users").hasRole("ADMIN")                    
-                        .requestMatchers("/api/users/stats").hasRole("ADMIN")             
-                        .requestMatchers("/api/users/*/deactivate").hasRole("ADMIN")      
-                        .requestMatchers("/api/users/*/activate").hasRole("ADMIN")        
+                        .requestMatchers("/api/users").hasRole("ADMIN")                    // ✅ Added
+                        .requestMatchers("/api/users/stats").hasRole("ADMIN")             // ✅ Added
+                        .requestMatchers("/api/users/*/deactivate").hasRole("ADMIN")      // ✅ Added
+                        .requestMatchers("/api/users/*/activate").hasRole("ADMIN")        // ✅ Added
                         .requestMatchers(HttpMethod.PUT, "/api/users/*/status").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("ADMIN")
 
@@ -181,7 +181,12 @@ public class SecurityConfig {
                 "http://localhost:5500",
                 "http://127.0.0.1:5500",
                 "http://localhost:3000",
-                "http://localhost:8080"
+                "http://localhost:8080",
+                //"https://slari-research-hub.com",
+                // Production — replace with your actual Netlify URL
+                "https://slari-research-hub.netlify.app",
+                // Add your custom domain later if SLARI gets one
+                "https://research.slari.gov.sl"
         ));
 
         config.setAllowedMethods(List.of(

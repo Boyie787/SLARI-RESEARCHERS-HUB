@@ -15,135 +15,288 @@ import java.util.List;
 public interface VarietyRepository extends JpaRepository<Variety, Long> {
 
     /**
-     * Non-paginated version — used by the legacy browse() method
-     * and any service method that needs a full list.
+     * Master filter query without pagination.
+     *
+     * Important:
+     * We return only v.* here. Rating calculations are handled
+     * separately by RatingRepository instead of mixing calculated
+     * columns with the Variety entity mapping.
      */
     @Query(value = """
-        SELECT DISTINCT
-            v.*,
-            CAST(
-                ROUND(
-                    CAST(
-                        (SELECT AVG(r.score) FROM ratings r
-                         WHERE r.variety_id = v.id)
-                    AS numeric), 1
-                )
-            AS float8) AS average_rating,
-            (SELECT COUNT(r.id) FROM ratings r
-             WHERE r.variety_id = v.id) AS rating_count
+        SELECT DISTINCT v.*
         FROM varieties v
-        LEFT JOIN users u ON u.id = v.researcher_id
-        WHERE
-            (CAST(:status AS text) IS NULL
-                OR v.status = CAST(:status AS text))
-        AND (CAST(:crop AS text) IS NULL
-                OR v.crop ILIKE CAST(:crop AS text))
-        AND (CAST(:region AS text) IS NULL
-                OR v.region ILIKE CAST(:region AS text)
-                OR lower(v.region) = 'all zones')
-        AND (CAST(:season AS text) IS NULL
-                OR v.season ILIKE CAST(:season AS text)
-                OR lower(v.season) = 'bimodal')
-        AND (CAST(:keyword AS text) IS NULL
-                OR v.name        ILIKE CONCAT('%', CAST(:keyword AS text), '%')
-                OR v.crop        ILIKE CONCAT('%', CAST(:keyword AS text), '%')
-                OR v.description ILIKE CONCAT('%', CAST(:keyword AS text), '%'))
+        WHERE v.deleted = false
+        AND (
+            COALESCE(CAST(:status AS text), '') = ''
+            OR v.status = CAST(:status AS text)
+        )
+        AND (
+            COALESCE(CAST(:crop AS text), '') = ''
+            OR v.crop ILIKE CONCAT('%', CAST(:crop AS text), '%')
+        )
+        AND (
+            COALESCE(CAST(:region AS text), '') = ''
+            OR v.region ILIKE CONCAT('%', CAST(:region AS text), '%')
+            OR LOWER(v.region) = 'all zones'
+        )
+        AND (
+            COALESCE(CAST(:season AS text), '') = ''
+            OR v.season ILIKE CONCAT('%', CAST(:season AS text), '%')
+            OR LOWER(v.season) = 'bimodal'
+        )
+        AND (
+            COALESCE(CAST(:keyword AS text), '') = ''
+            OR v.name ILIKE CONCAT('%', CAST(:keyword AS text), '%')
+            OR v.crop ILIKE CONCAT('%', CAST(:keyword AS text), '%')
+            OR v.description ILIKE CONCAT('%', CAST(:keyword AS text), '%')
+        )
         ORDER BY v.created_at DESC
-        """, nativeQuery = true)
+        """,
+        nativeQuery = true)
     List<Variety> findWithFilters(
-            @Param("status")  String status,
-            @Param("crop")    String crop,
-            @Param("region")  String region,
-            @Param("season")  String season,
+            @Param("status") String status,
+            @Param("crop") String crop,
+            @Param("region") String region,
+            @Param("season") String season,
             @Param("keyword") String keyword
     );
 
+
     /**
-     * Paginated version — used by the controller browse endpoint.
+     * Master filter query with pagination.
      *
-     * countQuery is REQUIRED for native queries with Pageable.
-     * Spring cannot derive the COUNT automatically from a native
-     * SELECT DISTINCT with subqueries — it must be explicit.
+     * Only actual columns from the varieties table are selected.
+     * Rating information is retrieved separately.
      */
-    @Query(
-        value = """
-            SELECT DISTINCT
-                v.*,
-                CAST(
-                    ROUND(
-                        CAST(
-                            (SELECT AVG(r.score) FROM ratings r
-                             WHERE r.variety_id = v.id)
-                        AS numeric), 1
-                    )
-                AS float8) AS average_rating,
-                (SELECT COUNT(r.id) FROM ratings r
-                 WHERE r.variety_id = v.id) AS rating_count
-            FROM varieties v
-            LEFT JOIN users u ON u.id = v.researcher_id
-            WHERE
-                (CAST(:status AS text) IS NULL
-                    OR v.status = CAST(:status AS text))
-            AND (CAST(:crop AS text) IS NULL
-                    OR v.crop ILIKE CAST(:crop AS text))
-            AND (CAST(:region AS text) IS NULL
-                    OR v.region ILIKE CAST(:region AS text)
-                    OR lower(v.region) = 'all zones')
-            AND (CAST(:season AS text) IS NULL
-                    OR v.season ILIKE CAST(:season AS text)
-                    OR lower(v.season) = 'bimodal')
-            AND (CAST(:keyword AS text) IS NULL
-                    OR v.name        ILIKE CONCAT('%', CAST(:keyword AS text), '%')
-                    OR v.crop        ILIKE CONCAT('%', CAST(:keyword AS text), '%')
-                    OR v.description ILIKE CONCAT('%', CAST(:keyword AS text), '%'))
-            ORDER BY v.created_at DESC
-            """,
+    @Query(value = """
+        SELECT DISTINCT v.*
+        FROM varieties v
+        WHERE v.deleted = false
+        AND (
+            COALESCE(CAST(:status AS text), '') = ''
+            OR v.status = CAST(:status AS text)
+        )
+        AND (
+            COALESCE(CAST(:crop AS text), '') = ''
+            OR v.crop ILIKE CONCAT('%', CAST(:crop AS text), '%')
+        )
+        AND (
+            COALESCE(CAST(:region AS text), '') = ''
+            OR v.region ILIKE CONCAT('%', CAST(:region AS text), '%')
+            OR LOWER(v.region) = 'all zones'
+        )
+        AND (
+            COALESCE(CAST(:season AS text), '') = ''
+            OR v.season ILIKE CONCAT('%', CAST(:season AS text), '%')
+            OR LOWER(v.season) = 'bimodal'
+        )
+        AND (
+            COALESCE(CAST(:keyword AS text), '') = ''
+            OR v.name ILIKE CONCAT('%', CAST(:keyword AS text), '%')
+            OR v.crop ILIKE CONCAT('%', CAST(:keyword AS text), '%')
+            OR v.description ILIKE CONCAT('%', CAST(:keyword AS text), '%')
+        )
+        ORDER BY v.created_at DESC
+        """,
         countQuery = """
             SELECT COUNT(DISTINCT v.id)
             FROM varieties v
-            WHERE
-                (CAST(:status AS text) IS NULL
-                    OR v.status = CAST(:status AS text))
-            AND (CAST(:crop AS text) IS NULL
-                    OR v.crop ILIKE CAST(:crop AS text))
-            AND (CAST(:region AS text) IS NULL
-                    OR v.region ILIKE CAST(:region AS text)
-                    OR lower(v.region) = 'all zones')
-            AND (CAST(:season AS text) IS NULL
-                    OR v.season ILIKE CAST(:season AS text)
-                    OR lower(v.season) = 'bimodal')
-            AND (CAST(:keyword AS text) IS NULL
-                    OR v.name        ILIKE CONCAT('%', CAST(:keyword AS text), '%')
-                    OR v.crop        ILIKE CONCAT('%', CAST(:keyword AS text), '%')
-                    OR v.description ILIKE CONCAT('%', CAST(:keyword AS text), '%'))
+            WHERE v.deleted = false
+            AND (
+                COALESCE(CAST(:status AS text), '') = ''
+                OR v.status = CAST(:status AS text)
+            )
+            AND (
+                COALESCE(CAST(:crop AS text), '') = ''
+                OR v.crop ILIKE CONCAT('%', CAST(:crop AS text), '%')
+            )
+            AND (
+                COALESCE(CAST(:region AS text), '') = ''
+                OR v.region ILIKE CONCAT('%', CAST(:region AS text), '%')
+                OR LOWER(v.region) = 'all zones'
+            )
+            AND (
+                COALESCE(CAST(:season AS text), '') = ''
+                OR v.season ILIKE CONCAT('%', CAST(:season AS text), '%')
+                OR LOWER(v.season) = 'bimodal'
+            )
+            AND (
+                COALESCE(CAST(:keyword AS text), '') = ''
+                OR v.name ILIKE CONCAT('%', CAST(:keyword AS text), '%')
+                OR v.crop ILIKE CONCAT('%', CAST(:keyword AS text), '%')
+                OR v.description ILIKE CONCAT('%', CAST(:keyword AS text), '%')
+            )
             """,
-        nativeQuery = true
-    )
+        nativeQuery = true)
     Page<Variety> findWithFilters(
-            @Param("status")  String status,
-            @Param("crop")    String crop,
-            @Param("region")  String region,
-            @Param("season")  String season,
+            @Param("status") String status,
+            @Param("crop") String crop,
+            @Param("region") String region,
+            @Param("season") String season,
             @Param("keyword") String keyword,
             Pageable pageable
     );
 
-    List<Variety> findByResearcherIdOrderByCreatedAtDesc(Long researcherId);
 
-    List<Variety> findByStatusOrderByCreatedAtAsc(VarietyStatus status);
+    /**
+     * Get varieties belonging to a researcher.
+     */
+    @Query("""
+        SELECT v
+        FROM Variety v
+        WHERE v.researcher.id = :researcherId
+        AND v.deleted = false
+        ORDER BY v.createdAt DESC
+        """)
+    List<Variety> findByResearcherIdOrderByCreatedAtDesc(
+            @Param("researcherId") Long researcherId
+    );
 
-    long countByStatus(VarietyStatus status);
 
+    /**
+     * Get varieties by status.
+     */
+    @Query("""
+        SELECT v
+        FROM Variety v
+        WHERE v.status = :status
+        AND v.deleted = false
+        ORDER BY v.createdAt ASC
+        """)
+    List<Variety> findByStatusOrderByCreatedAtAsc(
+            @Param("status") VarietyStatus status
+    );
+
+
+    /**
+     * Count varieties by status.
+     */
+    @Query("""
+        SELECT COUNT(v)
+        FROM Variety v
+        WHERE v.status = :status
+        AND v.deleted = false
+        """)
+    long countByStatus(
+            @Param("status") VarietyStatus status
+    );
+
+
+    /**
+     * Get the top-rated published varieties.
+     *
+     * Rating is calculated only for ordering.
+     * It is not mapped into the Variety entity.
+     */
     @Query(value = """
-        SELECT v.* FROM varieties v
+        SELECT v.*
+        FROM varieties v
         WHERE v.status = 'PUBLISHED'
+        AND v.deleted = false
         ORDER BY (
-            SELECT COALESCE(CAST(AVG(r.score) AS numeric), 0)
-            FROM ratings r WHERE r.variety_id = v.id
-        ) DESC
+            SELECT COALESCE(AVG(r.score), 0)
+            FROM ratings r
+            WHERE r.variety_id = v.id
+        ) DESC,
+        v.created_at DESC
         LIMIT 6
-        """, nativeQuery = true)
+        """,
+        nativeQuery = true)
     List<Variety> findTopRatedPublished();
 
-    boolean existsByNameIgnoreCase(String name);
+
+    /**
+     * Check whether a non-deleted variety with the same name exists.
+     */
+    @Query("""
+        SELECT COUNT(v) > 0
+        FROM Variety v
+        WHERE LOWER(v.name) = LOWER(:name)
+        AND v.deleted = false
+        """)
+    boolean existsByNameIgnoreCase(
+            @Param("name") String name
+    );
+
+
+    /**
+     * Search published varieties by keyword.
+     */
+    @Query("""
+        SELECT v
+        FROM Variety v
+        WHERE v.deleted = false
+        AND v.status = 'PUBLISHED'
+        AND (
+            LOWER(v.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(v.crop) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(v.description) LIKE LOWER(CONCAT('%', :keyword, '%'))
+        )
+        ORDER BY v.createdAt DESC
+        """)
+    List<Variety> searchPublishedVarieties(
+            @Param("keyword") String keyword
+    );
+
+
+    /**
+     * Get published varieties by region.
+     *
+     * "All Zones" varieties are included for every region.
+     */
+    @Query("""
+        SELECT v
+        FROM Variety v
+        WHERE v.deleted = false
+        AND v.status = 'PUBLISHED'
+        AND (
+            LOWER(v.region) = LOWER(:region)
+            OR LOWER(v.region) = 'all zones'
+        )
+        ORDER BY v.createdAt DESC
+        """)
+    List<Variety> findByRegion(
+            @Param("region") String region
+    );
+
+
+    /**
+     * Get recently published varieties.
+     */
+    @Query("""
+        SELECT v
+        FROM Variety v
+        WHERE v.deleted = false
+        AND v.status = 'PUBLISHED'
+        ORDER BY v.createdAt DESC
+        """)
+    List<Variety> findRecentPublished(
+            Pageable pageable
+    );
+
+
+    /**
+     * Get varieties awaiting administrator review.
+     */
+    @Query("""
+        SELECT v
+        FROM Variety v
+        WHERE v.deleted = false
+        AND v.status = 'PENDING'
+        ORDER BY v.createdAt ASC
+        """)
+    List<Variety> findPendingForReview();
+
+
+    /**
+     * Count varieties grouped by crop.
+     */
+    @Query("""
+        SELECT v.crop, COUNT(v)
+        FROM Variety v
+        WHERE v.deleted = false
+        GROUP BY v.crop
+        ORDER BY COUNT(v) DESC
+        """)
+    List<Object[]> countVarietiesByCrop();
 }
